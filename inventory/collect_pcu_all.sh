@@ -43,7 +43,7 @@ for hostname in $HOST_LIST ; do
     if ! ./gspreadsheet.py --table $TABLENAME \
              --update \
              --row $SITE.$HOST \
-             --results "./collect_pcu_info.sh %(site.machine)s" ; then
+             --results "./collect_pcu_info.sh {site.machine}" ; then
         echo "Error: spreadsheet update failed for $SITE.$HOST"
         exit 1
     fi
