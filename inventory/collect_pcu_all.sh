@@ -32,7 +32,7 @@ HOST_LIST=`cat $PCULIST`
 set -x
 
 # NOTE: create the spreadsheet if not already present.
-./gspreadsheet.py --table $TABLENAME --create --columns $LABELS
+./gdict.py --table $TABLENAME --create --columns $LABELS
 
 for hostname in $HOST_LIST ; do 
     HOST=$( echo $hostname | tr '.' ' ' | awk '{print $1}' )
@@ -40,7 +40,7 @@ for hostname in $HOST_LIST ; do
     mkdir -p sysinfo/$SITE/
 
     echo $SITE.$HOST
-    if ! ./gspreadsheet.py --table $TABLENAME \
+    if ! ./gdict.py --table $TABLENAME \
              --update \
              --row $SITE.$HOST \
              --results "./collect_pcu_info.sh {site.machine}" ; then

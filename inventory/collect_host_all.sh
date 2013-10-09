@@ -30,14 +30,14 @@ HOST_LIST=`cat $HOSTLIST`
 $TOOLSDIR/get-mlab-sshconfig.py --update --config
 
 # NOTE: create the spreadsheet if not already present.
-./gspreadsheet.py --table $TABLENAME --create --columns $COLUMNS
+./gdict.py --table $TABLENAME --create --columns $COLUMNS
 
 for hostname in $HOST_LIST ; do 
     HOST=$( echo $hostname | tr '.' ' ' | awk '{print $1}' )
     SITE=$( echo $hostname | tr '.' ' ' | awk '{print $2}' )
 
     echo $SITE.$HOST
-    if ! ./gspreadsheet.py --table $TABLENAME \
+    if ! ./gdict.py --table $TABLENAME \
              --update \
              --row $SITE.$HOST \
              --results "./collect_host_info.sh {site.machine}" ; then

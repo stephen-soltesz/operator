@@ -19,20 +19,24 @@ MAX_ROW_COUNT=10000
 def usage():
     return """
   Summary:
-    gspreadsheet.py creates a columnated, queryable, and updatable,
-    key-values store using Google Drive Spreadsheets as a storge medium.
 
-    gspreadsheet.py is written for scripting, and as an automation aid. By
-    using Google Spreadsheets, the data can be viewed easily or updated by
-    hand if necessary.
+    gdict.py creates a scriptable, key-values store that is queryable and
+    updatable and uses Google Drive Spreadsheets as a storge backend.
 
-    gspreadsheet.py supports create, show, and update.
+    gdict.py was designed for scripting and as an automation aid. By using
+    Google Spreadsheets, the key-values data can be easily viewed, updated by
+    hand, or shared.
+
+    gdict.py can be used as both a source of input to scripts and a destination
+    for output from scripts.
+
+    gdict.py supports create, show, and update.
 
   Configuration:
-    All values can be set on the command line.  Common values can be set using
-    "spreadsheet.conf", using INI format supported by Python ConfigParser.
+    All values can be set on the command line. And, common values can be set
+    using "spreadsheet.conf", using INI format supported by Python ConfigParser.
     
-    gspreadsheet.py supports one section 'main' and these parameters:
+    gdict.py supports one section 'main' and these parameters:
       [main]
       email=        -- email address of google account to access Drive
       password=     -- password of google account
@@ -40,7 +44,7 @@ def usage():
       table=        -- table name (i.e, 'sheet' name in user interface)
 
   Scripted Values:
-    The best feature of gspreadsheet.py is that rows can be passed to a script
+    The best feature of gdict.py is that rows can be passed to a script
     as command line arguments and updated from values printed by a script.
 
     The script is specified using: 
@@ -70,28 +74,28 @@ def usage():
     If spreadsheet.conf contains values for email, password, and spreadsheet:
 
     # create table, with column names, first column is the keyname
-    ./gspreadsheet.py --table test --create --columns keyname,c1,c2,c3,c4
+    ./gdict.py --table test --create --columns keyname,c1,c2,c3,c4
 
     # add values
-    ./gspreadsheet.py --table test --update --key A --values 2,3,4,5
-    ./gspreadsheet.py --table test --update --key B --values 0,7,5,3
-    ./gspreadsheet.py --table test --update --key C --columns c2,c3 --values 9,1
+    ./gdict.py --table test --update --key A --values 2,3,4,5
+    ./gdict.py --table test --update --key B --values 0,7,5,3
+    ./gdict.py --table test --update --key C --columns c2,c3 --values 9,1
 
     # add values by script 
-    ./gspreadsheet.py --table test --update --key D \\
+    ./gdict.py --table test --update --key D \\
                   --results "echo 'c1,{ts}\\nc2,{c1}\\nc3,{c2}\\nc4,{c3}\\n'"
 
     # show a single record (with implied query for, keyname=='A')
-    ./gspreadsheet.py --table test --show --key A
+    ./gdict.py --table test --show --key A
 
     # show all values in column 'keyname'
-    ./gspreadsheet.py --table test --show --columns keyname
+    ./gdict.py --table test --show --columns keyname
 
     # show rows that match '--select' query
-    ./gspreadsheet.py --table test --show --select 'c2>4'
+    ./gdict.py --table test --show --select 'c2>4'
 
     # show everything
-    ./gspreadsheet.py --table test --show """
+    ./gdict.py --table test --show """
 
 def read_local_config(options, filename):
     """ Read the given configuration filename and save values in 'options'
