@@ -3,10 +3,14 @@
 import ConfigParser
 from datetime import datetime,timedelta
 import gdata.spreadsheet.text_db as spreadsheet_textdb
+import logging as log
 import os
 import subprocess
 import sys
 import time
+
+log.basicConfig(level=log.ERROR, format='%(levelname)-5s: %(message)s')
+
 
 # TODO: figure out how to get the number of rows in a spreadsheet
 #       seems unsupported without fetching everything and counting
@@ -28,20 +32,28 @@ def usage():
     All values can be set on the command line.  Common values can be set using
     "spreadsheet.conf", using INI format supported by Python ConfigParser.
     
-    gspreadsheet.py supports one section [main] and these parameters:
+    gspreadsheet.py supports one section 'main' and these parameters:
+      [main]
       email=        -- email address of google account to access Drive
       password=     -- password of google account
       sheetname=    -- spreadsheet name, visible in Drive
       table=        -- table name (i.e, 'sheet' name in user interface)
 
   Scripted Values:
-    The best feature of gspreadsheet.py is that rows can be updated from
-    values returned by a script.
+    The best feature of gspreadsheet.py is that rows can be passed to a script
+    as command line arguments and updated from values printed by a script.
 
-    The script is specified using --results "command [args ...]"
+    The script is specified using: 
+        --results "command [args ...]"
 
-    A successful script should have an exit value of zero, and print 
-    column,value pairs separated by newline to stdout.
+    The command string is treated as a python, format string. So, the current
+    values of columns will be substituted at run time.  To run 'command' with
+    the value in column c1 as the first argument:
+        --results "command {c1}"
+
+    To indicate success, the script should have an exit value of zero. To have
+    new values added to the current key, the script should print column,value
+    pairs separated by newline to stdout.
         c1,v1\\n
         c2,v2\\n
         c3,v3\\n
@@ -51,9 +63,8 @@ def usage():
     value.  Non-existent columsn will be ignored.  Values for recurring column
     names are concatenated with a space into a single value.
 
-    If an error occurs, the script should have a non-zero exit value, and
-    print a helpful message to stderr. Any data on stdout is ignored when exit
-    value is non-zero.
+    To indicate error, the script should have a non-zero exit value. Any message
+    to stderr is reported to the user, and any output to stdout is ignored.
 
   Examples:
     If spreadsheet.conf contains values for email, password, and spreadsheet:
@@ -125,8 +136,8 @@ def get_db(client, name, create):
     db_list = client.GetDatabases(name=name)
     if len(db_list) == 0:
         if not create:
-            print >>sys.stderr, "Error: could not find db %s" % name
-            print >>sys.stderr, "Error: use --create to create it"
+            log.error("Could not find db %s" % name)
+            log.error("Use --create to create it")
             sys.exit(1)
         db = client.CreateDatabase(name)
     else:
@@ -149,14 +160,14 @@ def get_table(db, table_name, column_names, create):
     table_list = db.GetTables(name=table_name)
     if len(table_list) == 0:
         if not create:
-            print >>sys.stderr, "Error: could not find table %s" % table_name
-            print >>sys.stderr, "Error: use --create to create it"
+            log.error("Could not find table %s" % table_name)
+            log.error("Use --create to create it")
             sys.exit(1)
+
         # NOTE: cannot create a table without headers.
         assert(column_names is not None and len(column_names) > 0 )
-        if config.verbose:
-            print >>sys.stderr, "Creating table: %s" % table_name
-            print >>sys.stderr, "With headers: %s" % column_names
+        log.info("Creating table: %s" % table_name)
+        log.info("With headers: %s" % column_names)
         table = db.CreateTable(table_name, column_names)
     else:
         table = table_list[0]
@@ -255,46 +266,46 @@ def parse_args():
     # NOTE: confirm some options are mutually exclusive
     count = sum([config.create,config.update,config.show,config.delete])
     if count == 0 or count > 1:
-        print "Error: Specify one of create, update, show, or delete"
+        log.error("Specify one of create, update, show, or delete")
         sys.exit(1)
 
     # NOTE: continue checking arguments
     if config.create:
         if config.columns is None:
-            print "Error: for --create also specify --columns"
+            log.error("For --create also specify --columns")
             sys.exit(1)
     if config.update:
         if config.key is None:
-            print "Error: for --update you must specify --key"
+            log.error("For --update you must specify --key")
             sys.exit(1)
         if config.select:
-            print "Error: sorry, --select not supported for --update"
-            print "Error: --select only supported for --show"
+            log.error("Sorry, --select not supported for --update")
+            log.error("--select only supported for --show")
             sys.exit(1)
         if config.key and config.results and config.values:
-            print "Error: specify one of --results or --values"
+            log.error("Specify one of --results or --values")
             sys.exit(1)
         if not ((config.key and config.results) or
                 (config.key and config.values)):
-            print "Error: specify --key with --results, or"
-            print "Error: specify --key with --values"
+            log.error("Specify --key with --results, or")
+            log.error("Specify --key with --values")
             sys.exit(1)
     if config.delete:
-        print "Error: sorry, --delete not yet supported"
+        log.error("Sorry, --delete not yet supported")
         sys.exit(1)
         if ((config.key is None and config.select is None) or
             (config.key and config.select)):
-            print "Error: for --delete specify either --key or --select"
+            log.error("for --delete specify either --key or --select")
             sys.exit(1)
 
     # NOTE: Get any local config information
     read_local_config(config, config.configfile)
 
     if config.email is None or config.password is None:
-        print "Error: please provide username & password"
+        log.error("Please provide username & password")
         sys.exit(1)
     if config.sheetname is None or config.table is None:
-        print "Error: please provide sheetname & table names"
+        log.error("Please provide sheetname & table names")
         sys.exit(1)
 
     if config.columns:
@@ -304,22 +315,30 @@ def parse_args():
         config.values = config.values.split(',')
         # TODO: maybe add a 'tr' like feature to convert chars after split
         #       in case we want ',' in values
+    
+    if config.verbose:
+        # NOTE: enable info() messages as well.
+        log.basicConfig(level=log.INFO, format='%(levelname)-5s: %(message)s')
 
     return (config, args)
 
 def handle_show(table, config):
+    if config.columns:
+        fields = config.columns
+    else:
+        fields = config.headers
+
     if config.header:
         # TODO: maybe support a separator character here.
-        print " ".join(config.columns)
+        print " ".join(fields)
 
     rs=get_records(table, config)
     for record in rs:
-        for key in config.columns:
+        for key in fields:
             if record.content.has_key(key):
                 print record.content[key],
             else:
-                msg = "Error: record does not contain key: '%s'" % key
-                print >>sys.stderr, msg
+                log.error("Record does not contain key: '%s'" % key)
                 sys.exit(1)
         print ""
 
@@ -330,8 +349,8 @@ def handle_update(table, config):
     elif config.results:
         handle_update_results(table, config, rs)
     else:
-        print >>sys.stderr, "Error: specify --results, or"
-        print >>sys.stderr, "Error: specify --values"
+        log.error("specify --results, or")
+        log.error("specify --values")
         sys.exit(1)
 
 def handle_update_values(table, config, rs):
@@ -342,31 +361,37 @@ def handle_update_values(table, config, rs):
     if not config.columns and len(config.headers[1:]) == len(config.values):
         new_data = dict(zip(config.headers[1:], config.values))
 
+    elif not config.columns:
+        val_len = len(config.values) # don't include first, keyname col
+        col_len = len(config.headers[1:]) # don't include first, keyname col
+        log.error("Number of --values given does not match the number of")
+        log.error("columns available: %s vs %s" % (val_len, col_len))
+        log.error("Either, specify --values with --columns, or ")
+        log.error("specify %s values for all columns." % col_len)
+        sys.exit(1)
+
     elif config.columns and len(config.columns) == len(config.values):
         # NOTE: this might update the 'key', maybe not ideal.
         new_data = dict(zip(config.columns, config.values))
 
-    else:
-        col_len = len(config.columns[1:]) # don't include first, keyname col
-        print >>sys.stderr, "Error: --values length do not match --columns."
-        print >>sys.stderr, "Error: Specify both --values and --columns, or"
-        msg = "Error: Specify enough --values to equal columns " + col_len
-        print >>sys.stderr, msg
+    elif config.columns:
+        val_len = len(config.values) # don't include first, keyname col
+        col_len = len(config.columns) # don't include first, keyname col
+        log.error("Number of --values given does not match")
+        log.error("Number of --columns given: %s vs %s" % (val_len, col_len))
         sys.exit(1)
 
-    new_data.update({config.columns[0] : config.key})
+    new_data.update({config.headers[0] : config.key})
 
     if len(rs) == 0:
         # NOTE: there was no field found, so add it.
-        if config.verbose:
-            print >>sys.stderr, "Adding data: %s" % new_data
+        log.info("Adding data: %s" % new_data)
         add_record(table, new_data)
         return
  
     # NOTE: len(rs) > 0
     for rec in rs:
-        if config.verbose:
-            print >>sys.stderr, "Updating data to", new_data
+        log.info("Updating data to", new_data)
         update_record(rec, new_data)
     return
 
@@ -374,24 +399,21 @@ def handle_update_results(table, config, rs):
     if len(rs) == 0:
         # NOTE: there was no field found, so add it.
         if not config.key:
-            msg = "Cannot add new records from empty --select queries"
-            print >>sys.stderr, "Error: " + msg
+            log.error("Cannot add new records from empty --select queries")
             sys.exit(1)
 
         # NOTE: treat the first column as the key for row.
-        default_data = {config.columns[0] : config.key}
-        if len(config.columns) > 1:
-            for key in config.columns[1:]:
+        default_data = {config.headers[0] : config.key}
+        if len(config.headers) > 1:
+            for key in config.headers[1:]:
                 default_data[key] = ''
-        if config.verbose:
-            print >>sys.stderr, default_data
-        (status, new_data) = handle_results_execution(default_data,
+        log.info(default_data)
+        (status, new_data) = handle_results_execution(config, default_data,
                                                       config.results)
         if not status:
-            msg = "Failed to collect data for record %s" % default_data
-            print >>sys.stderr, "Warning: " + msg
-            msg = "adding empty entry to spreadsheet"
-            print >>sys.stderr, "Warning: " + msg
+            log.error("NON-FATAL: Failed to collect data for record:")
+            log.error("NON-FATAL: %s" % default_data)
+            log.error("NON-FATAL: Adding empty entry to spreadsheet")
 
         default_data.update(new_data)
         add_record(table, default_data)
@@ -399,13 +421,13 @@ def handle_update_results(table, config, rs):
 
     # NOTE: len(rs) > 0
     for rec in rs:
-        if config.verbose:
-            print >>sys.stderr, rec.content
-        (status, new_data) = handle_results_execution(rec.content.copy(),
+        log.info(rec.content)
+        (status, new_data) = handle_results_execution(config, 
+                                                      rec.content.copy(),
                                                       config.results)
         if not status:
-            msg = "Failed to collect data for record %s" % new_data
-            print >>sys.stderr, "Warning: " + msg
+            msg = "Failed to collect data for record: %s" % new_data
+            log.error("NON-FATAL: %s" % msg)
 
         update_record(rec, new_data)
     return
@@ -415,14 +437,13 @@ def handle_results_execution(config, current_data, command_format):
     (status, value_raw) = command_wrapper(config, current_data, command_format)
 
     if status is False:
-        print >>sys.stderr, "Error: %s" % (value_raw)
+        log.error(str(value_raw))
         return (False, {})
 
     # NOTE: status == True, so success
     # TODO: maybe make ',' configurable?
     new_data = parse_raw_values(value_raw)
-    if config.verbose: 
-        print >>sys.stderr, "new data:", new_data
+    log.info("new data: %s" % new_data)
     return (True, new_data)
 
 def parse_raw_values(value_raw, separator=','):
@@ -470,17 +491,14 @@ def command_wrapper(config, current_data, command_format):
                          stderr=subprocess.PIPE)
     input_str=None
     (s_out, s_err) = p.communicate(input_str)
+
+    log.info("STDOUT:"+ s_out.strip())
+    log.info("STDERR:"+ s_err.strip())
+
     if p.returncode != 0:
         return (False, s_err)
 
     # NOTE: success!
-    if config.verbose:
-        print >>sys.stderr, "STDOUT"
-        print >>sys.stderr, s_out.strip()
-        print >>sys.stderr, "END"
-        print >>sys.stderr, "STDERR"
-        print >>sys.stderr, s_err.strip()
-        print >>sys.stderr, "END"
     return (True, s_out)
 
 def main():
@@ -510,7 +528,7 @@ def main():
 
     elif config.delete:
         # TODO: add delete
-        print >>sys.stderr, "TODO: implement --delete"
+        log.error("TODO: implement --delete")
         sys.exit(1)
 
     sys.exit(0)
