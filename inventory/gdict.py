@@ -19,7 +19,6 @@ MAX_ROW_COUNT=10000
 def usage():
     return """
   Summary:
-
     gdict.py creates a scriptable, key-values store that is queryable and
     updatable and uses Google Drive Spreadsheets as a storge backend.
 
@@ -321,6 +320,7 @@ def parse_args():
         #       in case we want ',' in values
     
     if config.verbose:
+        # NOTE: default level is only error() messages.
         # NOTE: enable info() messages as well.
         log.basicConfig(level=log.INFO, format='%(levelname)-5s: %(message)s')
 
@@ -412,7 +412,7 @@ def handle_update_results(table, config, rs):
             for key in config.headers[1:]:
                 default_data[key] = ''
         log.info(default_data)
-        (status, new_data) = handle_results_execution(config, default_data,
+        (status, new_data) = handle_results_execution(default_data,
                                                       config.results)
         if not status:
             log.error("NON-FATAL: Failed to collect data for record:")
@@ -426,8 +426,7 @@ def handle_update_results(table, config, rs):
     # NOTE: len(rs) > 0
     for rec in rs:
         log.info(rec.content)
-        (status, new_data) = handle_results_execution(config, 
-                                                      rec.content.copy(),
+        (status, new_data) = handle_results_execution(rec.content.copy(),
                                                       config.results)
         if not status:
             msg = "Failed to collect data for record: %s" % new_data
@@ -436,9 +435,9 @@ def handle_update_results(table, config, rs):
         update_record(rec, new_data)
     return
 
-def handle_results_execution(config, current_data, command_format):
+def handle_results_execution(current_data, command_format):
     # NOTE: format command to run using execute_fmt and current record values
-    (status, value_raw) = command_wrapper(config, current_data, command_format)
+    (status, value_raw) = command_wrapper(current_data, command_format)
 
     if status is False:
         log.error(str(value_raw))
@@ -476,7 +475,7 @@ def parse_raw_values(value_raw, separator=','):
                 new_data[k] = v.strip()
     return new_data
 
-def command_wrapper(config, current_data, command_format):
+def command_wrapper(current_data, command_format):
     # NOTE: Schedule downtime for 2 days
     date_ts = time.strftime("%Y-%m-%dT%H:%M")
     date = time.strftime("%Y-%m-%d")
