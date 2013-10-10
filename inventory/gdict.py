@@ -11,7 +11,6 @@ import time
 
 log.basicConfig(level=log.ERROR, format='%(levelname)-5s: %(message)s')
 
-
 # TODO: figure out how to get the number of rows in a spreadsheet
 #       seems unsupported without fetching everything and counting
 MAX_ROW_COUNT=10000
@@ -83,6 +82,10 @@ def usage():
     # add values by script 
     ./gdict.py --table test --update --key D \\
                   --results "echo 'c1,{ts}\\nc2,{c1}\\nc3,{c2}\\nc4,{c3}\\n'"
+
+    # update column c1 to ts where --select matches
+    ./gdict.py --table test --update --select 'c1<10' \\
+                  --results "echo c1,{ts}"
 
     # show a single record (with implied query for, keyname=='A')
     ./gdict.py --table test --show --key A
@@ -278,21 +281,17 @@ def parse_args():
             log.error("For --create also specify --columns")
             sys.exit(1)
     if config.update:
-        if config.key is None:
-            log.error("For --update you must specify --key")
+        # NOTE: One or the other; not both and not neither.
+        if (config.key is None) == (config.select is None):
+            log.error("With --update, please specify one of")
+            log.error("--key or --select")
             sys.exit(1)
-        if config.select:
-            log.error("Sorry, --select not supported for --update")
-            log.error("--select only supported for --show")
+
+        # NOTE: One or the other; not both and not neither.
+        if (config.results is None) == (config.values is None):
+            log.error("Specify only one of --results or --values")
             sys.exit(1)
-        if config.key and config.results and config.values:
-            log.error("Specify one of --results or --values")
-            sys.exit(1)
-        if not ((config.key and config.results) or
-                (config.key and config.values)):
-            log.error("Specify --key with --results, or")
-            log.error("Specify --key with --values")
-            sys.exit(1)
+
     if config.delete:
         log.error("Sorry, --delete not yet supported")
         sys.exit(1)
@@ -348,6 +347,11 @@ def handle_show(table, config):
 
 def handle_update(table, config):
     rs = get_records(table, config)
+    if len(rs) == 0 and config.select:
+        log.error("No records returned from --select %s" % config.select)
+        log.error("Cannot add new records using --select")
+        sys.exit(1)
+
     if config.values:
         handle_update_values(table, config, rs)
     elif config.results:
@@ -359,9 +363,6 @@ def handle_update(table, config):
 
 def handle_update_values(table, config, rs):
     data_list = []
-    # TODO: allow smaller --columns --values pairs
-    # TODO: allow out of order combinations
-
     if not config.columns and len(config.headers[1:]) == len(config.values):
         new_data = dict(zip(config.headers[1:], config.values))
 
@@ -375,7 +376,7 @@ def handle_update_values(table, config, rs):
         sys.exit(1)
 
     elif config.columns and len(config.columns) == len(config.values):
-        # NOTE: this might update the 'key', maybe not ideal.
+        # NOTE: this could be used to update the 'key', maybe not ideal.
         new_data = dict(zip(config.columns, config.values))
 
     elif config.columns:
@@ -401,11 +402,6 @@ def handle_update_values(table, config, rs):
 
 def handle_update_results(table, config, rs):
     if len(rs) == 0:
-        # NOTE: there was no field found, so add it.
-        if not config.key:
-            log.error("Cannot add new records from empty --select queries")
-            sys.exit(1)
-
         # NOTE: treat the first column as the key for row.
         default_data = {config.headers[0] : config.key}
         if len(config.headers) > 1:
