@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 """ a wrapper around the nagios 'scheduled downtime' functionality. """
 
 import os
@@ -65,7 +65,10 @@ def check_date(option, opt, value):
         try:
             return datetime.strptime(value, "%Y-%m-%d")
         except:
-            raise OptionValueError("option %s: invalid date value: %r. Should have a format like \"YYYY-MM-DD[-HH:MM]\"" % (opt, value))
+            msg_fmt  = "Option %s: invalid date value: %r. "
+            msg_fmt += "Should have a format like \"YYYY-MM-DD[-HH:MM]\"" 
+            msg = msg_fmt % (opt, value)
+            raise OptionValueError(msg)
 
 class DateOption (Option):
     TYPES = Option.TYPES + ("date",)
@@ -74,11 +77,22 @@ class DateOption (Option):
 
 def usage():
     msg = """
-    Usage: 
+    nagios_downtime.py eases acknowledgement of a host and host services.
 
-        Hi. this is a test.
+    nagios_downtime.py supports three types of downtimes:
+       hostservices - downtime for all services associated with a nagios 'host'
+       service - downtime only for a nagios 'service'
+       host - downtime only for a nagios 'host'
+
+    Examples:
+        ./nagios_downtime.py --type hostservices \\
+                             --hostname \\
+                             --start 2013-10-22 \\
+                             --end 2013-10-24 \\
+                             --comment "system update"
     """
     return msg
+
 def parse_args():
     from optparse import OptionParser
     parser = OptionParser(usage=usage(), option_class=DateOption)
@@ -89,23 +103,23 @@ def parse_args():
     parser.add_option("", "--hostname", dest="hostname", 
                        default=None, 
                        help="hostname for downtime.")
-    parser.add_option("", "--comment", dest="comment", 
-                       default="Downtime scheduled with %s." % sys.argv[0], 
-                       help="Add a comment to event.")
-    parser.add_option("", "--service", dest="servicename", 
-                       default=None, 
-                       help="service name for downtime (also requires hostname)")
-    parser.add_option("", "--type", dest="type", 
-                       default="host", 
-                       help="Types of downtime: host, service, hostservices")
     parser.add_option("", "--start", dest="start_time", 
                        type="date", 
                        default=datetime.now(), 
-                       help="Begin downtime at 'start' (format: YYYYMMDD[-HH:MM]).")
+                       help="Begin downtime on date YYYYMMDD[-HH:MM]")
     parser.add_option("", "--end", dest="end_time", 
                        type="date", 
                        default=datetime.now()+timedelta(1), 
-                       help="End downtime at 'end'.")
+                       help="End downtime on date YYYYMMDD[-HH:MM]")
+    parser.add_option("", "--type", dest="type", 
+                       default="hostservices", 
+                       help="Types of downtime: host, service, hostservices")
+    parser.add_option("", "--service", dest="servicename", 
+                       default=None, 
+                       help="Service name for downtime (requires hostname)")
+    parser.add_option("", "--comment", dest="comment", 
+                       default="Downtime scheduled with %s." % sys.argv[0], 
+                       help="Add a comment to event.")
  
     (options, args) = parser.parse_args()
 
@@ -127,7 +141,10 @@ def main():
     try:
         (ret,msg) = custom_command(opt, args)
         if ret not in state_list:
-            raise Exception("Returned wrong state type from custom_command(): should be one of %s" % state_list)
+            msg_fmt  = "Returned wrong state type from custom_command(): "
+            msg_fmt += "should be one of %s"
+            msg = msg_fmt % state_list
+            raise Exception(msg)
 
     except KeyboardInterrupt:
         sys.exit(STATE_UNKNOWN)
