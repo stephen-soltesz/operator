@@ -66,12 +66,41 @@ function err_echo () {
     echo "$@" 1>&2
 }
 
+function sum_first_values () {
+    awk 'BEGIN{sum=0} {sum+=$1} END {print sum}'
+}
+
 function format_raw_host () {
     local file=$1
     local cpufile=$2
 
+    ./parse.py ./hostinfo/arn01/mlab3.lshw.xml "serial"
+    ./parse.py ./hostinfo/arn01/mlab3.lshw.xml "product"
+    ./parse.py ./hostinfo/arn01/mlab3.lshw.xml "./node/node/product/..[@class='processor']/product" | uniq
+    ./parse.py ./hostinfo/arn01/mlab3.lshw.xml "./node/node/[@class='processor']"
+    ./parse.py ./hostinfo/arn01/mlab3.lshw.xml "./node/node/product/..[@class='processor']/size" | uniq
+    ./parse.py ./hostinfo/arn01/mlab3.lshw.xml "./node/node/product/..[@class='processor']/clock" | uniq
+
+    ./parse.py ./hostinfo/nuq0t/mlab2.lshw.xml ".//node/..[@class='memory']/size"  # total
+
+    ./parse.py ./hostinfo/nuq0t/mlab2.lshw.xml "./node/node/[@class='memory'][@id='memory']/size"
+    ./parse.py ./hostinfo/nuq0t/mlab2.lshw.xml "./node/node/node/..[@class='memory']/size"
+    ./parse.py ./hostinfo/nuq0t/mlab2.lshw.xml "./node/node/node[@class='memory']/clock" | wc -l
+    ./parse.py ./hostinfo/nuq0t/mlab2.lshw.xml "./node/node/node[@class='memory'][1]/clock"
+
+    ./parse.py ./hostinfo/nuq0t/mlab2.lshw.xml ".//node[@class='network'][1]/product"
+    ./parse.py ./hostinfo/nuq0t/mlab2.lshw.xml ".//node[@class='network']/product" | wc -l
+    ./parse.py ./hostinfo/nuq0t/mlab2.lshw.xml ".//node[@class='network'][1]/size"
+    ./parse.py ./hostinfo/nuq0t/mlab2.lshw.xml ".//node[@class='network'][1]/configuration/setting[@id='driver']" 
+
+    # total (one of these will work)
+    ./parse.py ./hostinfo/nuq0t/mlab2.lshw.xml ".//node[@class='disk']/size" | sum_first_values
+    ./parse.py ./hostinfo/nuq0t/mlab2.lshw.xml ".//node[@class='disk']/size" | wc -l
+    ./parse.py ./hostinfo/nuq0t/mlab2.lshw.xml ".//node[@class='storage']/configuration/setting[@id='driver']" | uniq
+
     echo $HOST_SERIAL,$( get_serial $file )
     echo $HOST_MODEL,$( get_model $file )
+
     echo $HOST_PROC_MODEL,$( get_proc_model $cpufile ) 
     PROC_PHY_COUNT=$( get_physical_proc_count $cpufile )
     PROC_RAW_COUNT=$( get_proc_cores_count $cpufile )
@@ -79,13 +108,16 @@ function format_raw_host () {
     echo $HOST_PROC_PER_CORE,$(( $PROC_RAW_COUNT / $PROC_PHY_COUNT ))
     echo $HOST_PROC_FREQ,$( get_proc_speed $file )
     echo $HOST_PROC_BUS,$( get_proc_bus $file )
+
     echo $HOST_RAM_TOTAL,$( get_ram_total $file )
     echo $HOST_RAM_DIMMS,$( get_ram_dimms $file )
     echo $HOST_RAM_SPEED,$( get_ram_speed $file )
+
     echo $HOST_NET_MODEL,$( get_net_model $file )
     echo $HOST_NET_PORTS,$( get_net_ports $file )
     echo $HOST_NET_SPEED,$( get_net_speed $file ) 
     echo $HOST_NET_DRIVER,$( get_net_driver $file )
+
     echo $HOST_DISK_TOTAL,$( get_disk_total $file )
     echo $HOST_DISK_COUNT,$( get_disk_count $file )
     echo $HOST_DISK_DRIVER,$( get_disk_driver $file )

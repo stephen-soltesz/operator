@@ -15,7 +15,7 @@ fi
 # NOTE: setup relative paths to m-lab/operator/tools
 TOOLSDIR=$( readlink -f $( dirname $0 )/../tools )
 # NOTE: could be parallelized with $TOOLSDIR/fetch.py but, meh.
-LSHW_COMMAND="bash -c 'test -f /usr/sbin/lshw || sudo yum install -y lshw && lshw -quiet'"
+LSHW_COMMAND="bash -c 'test -f /usr/sbin/lshw || sudo yum install -y lshw && lshw -quiet -xml'"
 CPU_COMMAND="bash -c 'cat /proc/cpuinfo'"
 
 SITEHOST=$1
@@ -26,7 +26,7 @@ HOST=$( echo $SITEHOST | tr '.' ' ' | awk '{print $2}' )
 
 mkdir -p hostinfo/$SITE/
 HOST_SITE=${HOST}.${SITE}
-RAW_HOSTINFO="hostinfo/$SITE/$HOST.lshw.raw"
+RAW_HOSTINFO="hostinfo/$SITE/$HOST.lshw.xml"
 RAW_CPUINFO="hostinfo/$SITE/$HOST.cpu.raw"
 PARSED_HOSTINFO="hostinfo/$SITE/$HOST.parsed"
 
@@ -35,7 +35,7 @@ if ! test -f $RAW_HOSTINFO || test -n "$FORCE_UPDATE" ; then
     tmpfile=$( mktemp )
     err_echo "Trying to collect lshw from $HOST_SITE"
     ssh $HOST_SITE "$LSHW_COMMAND" > $tmpfile
-    if ! grep -q "description:" $tmpfile 2> /dev/null ; then
+    if ! grep -q "description" $tmpfile 2> /dev/null ; then
         err_echo "Failed to get info for $RAW_HOSTINFO"
         rm -f $tmpfile
         exit 1
@@ -57,7 +57,7 @@ if ! test -f $RAW_CPUINFO || test -n "$FORCE_UPDATE" ; then
     mv $tmpfile $RAW_CPUINFO
 fi
 
-format_raw_host $RAW_HOSTINFO $RAW_CPUINFO > $PARSED_HOSTINFO
+#format_raw_host $RAW_HOSTINFO $RAW_CPUINFO > $PARSED_HOSTINFO
 
 # NOTE: print parsed data
-cat $PARSED_HOSTINFO
+#cat $PARSED_HOSTINFO
