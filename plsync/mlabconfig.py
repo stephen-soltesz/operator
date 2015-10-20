@@ -8,6 +8,13 @@ import StringIO
 import sys
 import time
 
+ZONE_TTL = 60 * 5
+ZONE_MIN_TTL = 60 * 5
+ZONE_REFRESH = 60 * 5
+ZONE_RETRY = 60 * 60
+ZONE_EXPIRE = 7 * 60 * 60 * 24
+ZONE_HEADER_TEMPLATE = 'mlabzone.header.in'
+
 
 def usage():
     return """
@@ -22,7 +29,6 @@ EXAMPLES:
     mlabconfig.py --format=sitestats
       (e.g. mlab-site-stats.json)
 
-TODO:
     mlabconfig.py --format=zone
       (e.g. gen_zones.py)
 """
@@ -30,6 +36,19 @@ TODO:
 
 def parse_flags():
     parser = optparse.OptionParser(usage=usage())
+    parser.set_defaults(force=False,
+                        support_email="support.measurementlab.net",
+                        primary_nameserver="ns.chambana.net",
+                        secondary_nameserver="sns-pb.isc.org",
+                        domain="measurement-lab.org",
+                        serial="auto",
+                        zonefile=None,
+                        ttl=ZONE_TTL,
+                        minttl=ZONE_MIN_TTL,
+                        refresh=ZONE_REFRESH,
+                        retry=ZONE_RETRY,
+                        expire=ZONE_EXPIRE)
+
     parser.add_option(
         '', '--sites_config', metavar='sites', dest='sites_config',
         default='sites', help='The name of the module with Site() definitions.')
@@ -45,11 +64,161 @@ def parse_flags():
         default='slice_list',
         help=('The variable name of experiments within the experiments_config '
               'data.'))
-    # TODO: Support multiple formats, e.g. 'hostips', 'zone', 'sitestats'.
     parser.add_option(
         '', '--format', metavar='format', dest='format', default='hostips',
         help='Format of output.')
+    parser.add_option(
+        '', '--zoneheader', metavar='zoneheader.in', dest='zoneheader',
+        default=ZONE_HEADER_TEMPLATE,
+        help='The full path to zone header file.')
     return parser.parse_args()
+
+
+def comment(output, note):
+    output.write('\n; %s\n' % note)
+
+
+def write_a_record(output, hostname, ipv4):
+    output.write(format_a_record(hostname, ipv4))
+    output.write('\n')
+
+
+def format_a_record(hostname, ipv4):
+    return '%-32s  IN  A   \t%s' % (hostname, ipv4)
+
+
+def write_aaaa_record(output, hostname, ipv6):
+    output.write(format_aaaa_record(hostname, ipv6))
+    output.write('\n')
+
+
+def format_aaaa_record(hostname, ipv6):
+    return '%-32s  IN  AAAA\t%s' % (hostname, ipv6)
+
+
+def export_router_and_switch_records(output, sites):
+  comment(output, 'router and switch v4 records.')
+  for i, site in enumerate(sites):
+      write_a_record(output, 'r1.' + site['name'], site.ipv4(index=1))
+      write_a_record(output, 's1.' + site['name'], site.ipv4(index=2))
+
+
+def export_pcu_records(output, sites):
+  comment(output, 'pcus v4')
+  for site in sites:
+      # TODO: change site['nodes'] to a pre-sorted list type.
+      for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
+          write_a_record(output, node['pcu'].recordname(), node['pcu'].ipv4())
+
+
+def export_server_records(output, sites):
+  export_server_records_v4(output, sites)
+  export_server_records_v4(output, sites, decoration='v4')
+  export_server_records_v6(output, sites)
+  export_server_records_v6(output, sites, decoration='v6')
+
+
+def export_server_records_v4(output, sites, decoration=''):
+  comment(output, 'hosts v4%s' % (' decorated' if decoration else ''))
+  for site in sites:
+      # TODO: change site['nodes'] to a pre-sorted list type.
+      for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
+          write_a_record(output, node.recordname(decoration), node.ipv4())
+
+
+def export_server_records_v6(output, sites, decoration=''):
+  comment(output, 'hosts v6%s' % (' decorated' if decoration else ''))
+  for site in sites:
+      # TODO: change site['nodes'] to a pre-sorted list type.
+      for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
+          if node.ipv6_is_enabled():
+              write_aaaa_record(output, node.recordname(decoration), node.ipv6())
+
+
+def export_experiment_records(output, sites, experiments):
+  for experiment in experiments:
+    if experiment['index'] is None:
+      # Ignore experiments without an IP address.
+      continue
+    export_experiment_records_v4(output, sites, experiment)
+    export_experiment_records_v4(output, sites, experiment, decoration='v4')
+
+    export_experiment_records_v6(output, sites, experiment)
+    export_experiment_records_v6(output, sites, experiment, decoration='v6')
+
+
+def export_experiment_records_v4(output, sites, experiment, decoration=''):
+  comment(output, '%s v4%s' % (experiment.dnsname(), (
+      ' decorated' if decoration else '')))
+  for site in sites:
+    # TODO: change site['nodes'] to a pre-sorted list type.
+    for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
+      #if node['index'] < 4:
+        ipv4 = node.iplist()[experiment['index']]
+        write_a_record(output, experiment.sitename(node, decoration), ipv4)
+    # TODO: change site['nodes'] to a pre-sorted list type.
+    for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
+      ipv4 = node.iplist()[experiment['index']]
+      write_a_record(output, experiment.recordname(node, decoration), ipv4)
+
+
+def export_experiment_records_v6(output, sites, experiment, decoration=''):
+  comment(output, '%s v6%s' % (experiment.dnsname(), (
+      ' decorated' if decoration else '')))
+  for site in sites:
+    # TODO: change site['nodes'] to a pre-sorted list type.
+    for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
+      #if (node['index'] < 4
+      if (node.ipv6_is_enabled()
+          and experiment.ipv6_is_enabled(node.hostname())):
+        ipv6 = node.iplistv6()[experiment['index']]
+        write_aaaa_record(output, experiment.sitename(node, decoration), ipv6)
+    # TODO: change site['nodes'] to a pre-sorted list type.
+    for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
+      if (node.ipv6_is_enabled() and
+          experiment.ipv6_is_enabled(node.hostname())):
+        ipv6 = node.iplistv6()[experiment['index']]
+        write_aaaa_record(output, experiment.recordname(node, decoration), ipv6)
+
+
+def export_mlab_zone_records(output, sites, experiments):
+    export_router_and_switch_records(output, sites)
+    export_pcu_records(output, sites)
+    export_server_records(output, sites)
+    export_experiment_records(output, sites, experiments)
+
+
+def export_mlab_zone_header(output, headerfile, options):
+    """Writes the zone header file to output.
+
+    The headerfile is used as a template and populated with values from options.
+    The zone serial number is based on the current time and uses the format
+    defined by RFC1912.
+
+    Args:
+        output - writable file object
+        headerfile - name of header file to use as template.
+        options - parsed command line options.
+    """
+    if not os.path.exists(headerfile):
+      raise Exception('Header file does not exist: %s' % headerfile)
+
+    # Use format (YYYYMMDDnn) of RFC1912: http://www.ietf.org/rfc/rfc1912.txt
+    t = time.gmtime()
+
+    # RFC1912 recommends 'nn' as the revision. However, identifying and
+    # incrementing this value is a manual, error prone step. Instead, the
+    # following calculates 'nn' from HH:MM (00:00 to 23:59, or 0 to 1439) by
+    # calculating the corresponding value in the range 00 to 99. 'nn' increases
+    # by 1 about every 15 minutes.
+    serial_prefix = time.strftime('%Y%m%d', t)
+    n = (t.tm_hour * 60.0 + t.tm_min) * 99.0 / 1439.0
+    options.serial = serial_prefix + ('%02d' % int(n))
+
+    headerdata = open(headerfile, 'r').read()
+    headerdata = headerdata % options.__dict__
+    output.write(headerdata)
+    output.write("\n\n")
 
 
 def export_mlab_site_stats(output, sites):
@@ -111,8 +280,8 @@ def main():
     elif options.format == 'sitestats':
         export_mlab_site_stats(sys.stdout, sites)
     elif options.format == 'zone':
-        print 'Sorry, mlabconfig does not yet support generating zone files.'
-        sys.exit(1)
+        export_mlab_zone_header(sys.stdout, options.zoneheader, options)
+        export_mlab_zone_records(sys.stdout, sites, experiments)
     else:
         print 'Sorry, unknown format: %s' % options.format
         sys.exit(1)
