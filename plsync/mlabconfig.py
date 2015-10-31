@@ -132,7 +132,8 @@ def export_server_records_v6(output, sites, decoration=''):
       # TODO: change site['nodes'] to a pre-sorted list type.
       for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
           if node.ipv6_is_enabled():
-              write_aaaa_record(output, node.recordname(decoration), node.ipv6())
+              write_aaaa_record(
+                  output, node.recordname(decoration), node.ipv6())
 
 
 def export_experiment_records(output, sites, experiments):
@@ -153,13 +154,11 @@ def export_experiment_records_v4(output, sites, experiment, decoration=''):
   for site in sites:
     # TODO: change site['nodes'] to a pre-sorted list type.
     for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
-      #if node['index'] < 4:
-        ipv4 = node.iplist()[experiment['index']]
-        write_a_record(output, experiment.sitename(node, decoration), ipv4)
-    # TODO: change site['nodes'] to a pre-sorted list type.
-    for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
-      ipv4 = node.iplist()[experiment['index']]
-      write_a_record(output, experiment.recordname(node, decoration), ipv4)
+        # TODO: should sitenames exclude mlab4's?
+        write_a_record(output, experiment.sitename(node, decoration),
+                       experiment.ipv4(node))
+        write_a_record(output, experiment.recordname(node, decoration),
+                       experiment.ipv4(node))
 
 
 def export_experiment_records_v6(output, sites, experiment, decoration=''):
@@ -168,17 +167,12 @@ def export_experiment_records_v6(output, sites, experiment, decoration=''):
   for site in sites:
     # TODO: change site['nodes'] to a pre-sorted list type.
     for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
-      #if (node['index'] < 4
-      if (node.ipv6_is_enabled()
-          and experiment.ipv6_is_enabled(node.hostname())):
-        ipv6 = node.iplistv6()[experiment['index']]
-        write_aaaa_record(output, experiment.sitename(node, decoration), ipv6)
-    # TODO: change site['nodes'] to a pre-sorted list type.
-    for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
-      if (node.ipv6_is_enabled() and
-          experiment.ipv6_is_enabled(node.hostname())):
-        ipv6 = node.iplistv6()[experiment['index']]
-        write_aaaa_record(output, experiment.recordname(node, decoration), ipv6)
+      # TODO: should sitenames exclude mlab4's?
+      if (node.ipv6_is_enabled() and experiment.ipv6(node)):
+        write_aaaa_record(output, experiment.sitename(node, decoration),
+                          experiment.ipv6(node))
+        write_aaaa_record(output, experiment.recordname(node, decoration),
+                          experiment.ipv6(node))
 
 
 def export_mlab_zone_records(output, sites, experiments):
