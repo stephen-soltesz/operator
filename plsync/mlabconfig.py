@@ -182,6 +182,18 @@ def export_mlab_zone_records(output, sites, experiments):
     export_experiment_records(output, sites, experiments)
 
 
+def serial_rfc1912(ts):
+    """Returns an rfc1912 style serial id (YYYYMMDDnn) for a DNS zone file."""
+    # RFC1912 (http://www.ietf.org/rfc/rfc1912.txt) recommends 'nn' as the
+    # revision. However, identifying and incrementing this value is a manual,
+    # error prone step. Instead, the following calculates 'nn' from HH:MM (00:00
+    # to 23:59, or 0 to 1439) by calculating the corresponding value in the
+    # range 00 to 99. 'nn' increases by 1 about every 15 minutes.
+    serial_prefix = time.strftime('%Y%m%d', ts)
+    n = (ts.tm_hour * 60.0 + ts.tm_min) * 99.0 / 1439.0
+    return serial_prefix + ('%02d' % int(n))
+
+
 def export_mlab_zone_header(output, headerfile, options):
     """Writes the zone header file to output.
 
@@ -197,18 +209,7 @@ def export_mlab_zone_header(output, headerfile, options):
     if not os.path.exists(headerfile):
       raise Exception('Header file does not exist: %s' % headerfile)
 
-    # Use format (YYYYMMDDnn) of RFC1912: http://www.ietf.org/rfc/rfc1912.txt
-    t = time.gmtime()
-
-    # RFC1912 recommends 'nn' as the revision. However, identifying and
-    # incrementing this value is a manual, error prone step. Instead, the
-    # following calculates 'nn' from HH:MM (00:00 to 23:59, or 0 to 1439) by
-    # calculating the corresponding value in the range 00 to 99. 'nn' increases
-    # by 1 about every 15 minutes.
-    serial_prefix = time.strftime('%Y%m%d', t)
-    n = (t.tm_hour * 60.0 + t.tm_min) * 99.0 / 1439.0
-    options.serial = serial_prefix + ('%02d' % int(n))
-
+    options.serial = serial_rfc1912(time.gmtime())
     headerdata = open(headerfile, 'r').read()
     headerdata = headerdata % options.__dict__
     output.write(headerdata)
