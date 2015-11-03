@@ -37,11 +37,11 @@ EXAMPLES:
 def parse_flags():
     parser = optparse.OptionParser(usage=usage())
     parser.set_defaults(force=False,
-                        support_email="support.measurementlab.net",
-                        primary_nameserver="ns.chambana.net",
-                        secondary_nameserver="sns-pb.isc.org",
-                        domain="measurement-lab.org",
-                        serial="auto",
+                        support_email='support.measurementlab.net',
+                        primary_nameserver='ns.chambana.net',
+                        secondary_nameserver='sns-pb.isc.org',
+                        domain='measurement-lab.org',
+                        serial='auto',
                         zonefile=None,
                         ttl=ZONE_TTL,
                         minttl=ZONE_MIN_TTL,
