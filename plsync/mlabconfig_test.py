@@ -1,10 +1,12 @@
 """Tests for mlabconfig."""
 
-import mlabconfig
-import StringIO
-import unittest
-from planetlab import model
 import json
+import mlabconfig
+import optparse
+from planetlab import model
+import StringIO
+import time
+import unittest
 
 
 class MlabconfigTest(unittest.TestCase):
@@ -128,6 +130,25 @@ class MlabconfigTest(unittest.TestCase):
 
         results = output.getvalue().split('\n')
         self.assertContainsItems(results, expected_results)
+
+    def test_serial_rfc1912(self):
+        # Fri Oct 31 00:45:00 2015 UTC.
+        # 45-minutes should result in 03.
+        ts = 1446252300
+
+        serial = mlabconfig.serial_rfc1912(time.gmtime(ts))
+
+        self.assertEqual('2015103103', serial)
+
+    def test_export_mlab_zone_header(self):
+        options = optparse.Values()
+        options.value = 'middle'
+        output = StringIO.StringIO()
+        header = StringIO.StringIO('before; %(value)s; after')
+
+        mlabconfig.export_mlab_zone_header(output, header, options)
+
+        self.assertEqual(output.getvalue(), 'before; middle; after')
 
 
 if __name__ == '__main__':

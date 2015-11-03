@@ -194,26 +194,20 @@ def serial_rfc1912(ts):
     return serial_prefix + ('%02d' % int(n))
 
 
-def export_mlab_zone_header(output, headerfile, options):
+def export_mlab_zone_header(output, header, options):
     """Writes the zone header file to output.
 
-    The headerfile is used as a template and populated with values from options.
-    The zone serial number is based on the current time and uses the format
-    defined by RFC1912.
+    Data read from header is used as a template and populated with values from
+    options. The end result is written to output.
 
     Args:
-        output - writable file object
-        headerfile - name of header file to use as template.
-        options - parsed command line options.
+        output: file, a file object open for writing.
+        header: file, a file object open for reading.
+        options: optparse.Values, all command line options.
     """
-    if not os.path.exists(headerfile):
-      raise Exception('Header file does not exist: %s' % headerfile)
-
-    options.serial = serial_rfc1912(time.gmtime())
-    headerdata = open(headerfile, 'r').read()
+    headerdata = header.read()
     headerdata = headerdata % options.__dict__
     output.write(headerdata)
-    output.write("\n\n")
 
 
 def export_mlab_site_stats(output, sites):
@@ -275,8 +269,11 @@ def main():
     elif options.format == 'sitestats':
         export_mlab_site_stats(sys.stdout, sites)
     elif options.format == 'zone':
-        export_mlab_zone_header(sys.stdout, options.zoneheader, options)
-        export_mlab_zone_records(sys.stdout, sites, experiments)
+        with open(options.zoneheader, 'r') as header:
+            options.serial = serial_rfc1912(time.gmtime())
+            export_mlab_zone_header(sys.stdout, header, options)
+            output.write("\n\n")
+            export_mlab_zone_records(sys.stdout, sites, experiments)
     else:
         print 'Sorry, unknown format: %s' % options.format
         sys.exit(1)
