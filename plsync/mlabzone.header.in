@@ -7,10 +7,6 @@
 $ORIGIN %(domain)s.
 $TTL    %(ttl)s
 
-; @	    IN 	    SOA	    alfred.cs.princeton.edu. support.planet-lab.org. (
-; @       IN      NS      alfred.cs.princeton.edu.
-; @       IN      NS      sns-pb.isc.org.
-
 @       IN      SOA     %(primary_nameserver)s. %(support_email)s. (
         %(serial)s      ; Serial
         %(refresh)s     ; Refresh
@@ -31,19 +27,6 @@ www     IN      A       128.112.139.90
 
 ; ---------- DONAR -------
 ;
-;donar   IN      NS      ns1.mlab.donardns.net.
-;donar   IN      NS      ns2.mlab.donardns.net.
-;donar   IN      NS      ns3.mlab.donardns.net.
-;donar   IN      NS      ns4.mlab.donardns.net.
-;donar   IN      NS      ns5.mlab.donardns.net.
-;donar   IN      NS      ns6.mlab.donardns.net.
-;donar   IN      NS      ns7.mlab.donardns.net.
-;donar   IN      NS      ns8.mlab.donardns.net.
-;donar   IN      NS      ns9.mlab.donardns.net.
-;donar   IN      NS      ns10.mlab.donardns.net.
-;donar   IN      NS      ns11.mlab.donardns.net.
-;donar   IN      NS      ns12.mlab.donardns.net.
-
 donar   IN      NS      utility.mlab.mlab1.lhr01.measurement-lab.org.
 donar   IN      NS      utility.mlab.mlab1.par01.measurement-lab.org.
 donar   IN      NS      utility.mlab.mlab1.lax01.measurement-lab.org.
