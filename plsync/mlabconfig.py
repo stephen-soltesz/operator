@@ -272,7 +272,7 @@ def main():
         with open(options.zoneheader, 'r') as header:
             options.serial = serial_rfc1912(time.gmtime())
             export_mlab_zone_header(sys.stdout, header, options)
-            output.write("\n\n")
+            sys.stdout.write("\n\n")
             export_mlab_zone_records(sys.stdout, sites, experiments)
     else:
         print 'Sorry, unknown format: %s' % options.format
