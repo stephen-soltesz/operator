@@ -10,7 +10,7 @@ import time
 
 ZONE_TTL = 60 * 5
 ZONE_MIN_TTL = 60 * 5
-ZONE_REFRESH = 60 * 5
+ZONE_REFRESH = 60 * 10
 ZONE_RETRY = 60 * 60
 ZONE_EXPIRE = 7 * 60 * 60 * 24
 ZONE_HEADER_TEMPLATE = 'mlabzone.header.in'
