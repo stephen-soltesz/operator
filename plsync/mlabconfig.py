@@ -191,16 +191,43 @@ def export_mlab_zone_records(output, sites, experiments):
     export_experiment_records(output, sites, experiments)
 
 
+def get_revision(revision_path):
+    """Returns a two digit revision number as a string.
+
+    Everytime the same revision_path is provided, the previous revision number
+    is incremented by one and returned. However, the revision number does not
+    increase beyond "99".
+
+    Args:
+        revision_path: str, the full path to a temporary file to read previous
+            and store latest revision number.
+
+    Returns:
+        str, a two digit revision number, e.g. "00", "01", etc, up to "99".
+    """
+    n = 0
+    if os.path.exists(revision_path):
+        with open(revision_path) as f:
+            n = int(f.read())
+            if n < 99:
+                n += 1
+            else:
+                logging.error('Revision is too large to increase!')
+
+    revision = '%02d' % n
+    with open(revision_path, 'w') as f:
+        f.write(revision)
+
+    return revision
+
+
 def serial_rfc1912(ts):
     """Returns an rfc1912 style serial id (YYYYMMDDnn) for a DNS zone file."""
     # RFC1912 (http://www.ietf.org/rfc/rfc1912.txt) recommends 'nn' as the
     # revision. However, identifying and incrementing this value is a manual,
-    # error prone step. Instead, the following calculates 'nn' from HH:MM (00:00
-    # to 23:59, or 0 to 1439) by calculating the corresponding value in the
-    # range 00 to 99. 'nn' increases by 1 about every 15 minutes.
+    # error prone step. Instead, we save a temporary daily sequence counter.
     serial_prefix = time.strftime('%Y%m%d', ts)
-    n = (ts.tm_hour * 60.0 + ts.tm_min) * 99.0 / 1439.0
-    return serial_prefix + ('%02d' % int(n))
+    return serial_prefix + get_revision(os.path.join('/tmp', serial_prefix))
 
 
 def export_mlab_zone_header(output, header, options):

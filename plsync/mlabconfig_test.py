@@ -2,7 +2,9 @@
 
 import json
 import mlabconfig
+import mock
 import optparse
+import os
 from planetlab import model
 import StringIO
 import time
@@ -131,14 +133,37 @@ class MlabconfigTest(unittest.TestCase):
         results = output.getvalue().split('\n')
         self.assertContainsItems(results, expected_results)
 
-    def test_serial_rfc1912(self):
+    @mock.patch.object(mlabconfig, 'get_revision')
+    def test_serial_rfc1912(self, mock_get_revision):
         # Fri Oct 31 00:45:00 2015 UTC.
         # 45-minutes should result in 03.
         ts = 1446252300
+        mock_get_revision.return_value = '03'
 
         serial = mlabconfig.serial_rfc1912(time.gmtime(ts))
 
         self.assertEqual('2015103103', serial)
+
+    @mock.patch.object(os.path, 'exists')
+    @mock.patch('__builtin__.open')
+    def test_get_revision(self, mopen, mock_exists):
+        ts = 1446252300
+        prefix = time.strftime('%Y%m%d', time.gmtime(ts))
+        # All open and disk I/O is mocked out.
+        # Pretend the file exists already.
+        mock_exists.return_value = True
+        # Hold the fake writer so we can check how it was called.
+        mock_writer = mock.mock_open()
+        # Open is called twice, once to read, and then to write.
+        mopen.side_effect = [
+            mock.mock_open(read_data='01').return_value,
+            mock_writer.return_value
+        ]
+
+        s = mlabconfig.get_revision('/tmp/' + prefix)
+
+        self.assertEqual(s, '02')
+        mock_writer.return_value.write.assert_called_once_with('02')
 
     def test_export_mlab_zone_header(self):
         options = optparse.Values()
