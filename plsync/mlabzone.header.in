@@ -25,6 +25,7 @@ $TTL    %(ttl)s
 ;
 www     IN      A       128.112.139.90
 
+; TODO: can we retire DONAR?
 ; ---------- DONAR -------
 ;
 donar   IN      NS      utility.mlab.mlab1.lhr01.measurement-lab.org.
