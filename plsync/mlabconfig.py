@@ -38,8 +38,8 @@ def parse_flags():
     parser = optparse.OptionParser(usage=usage())
     parser.set_defaults(force=False,
                         support_email='support.measurementlab.net',
-                        primary_nameserver='ns.chambana.net',
-                        secondary_nameserver='sns-pb.isc.org',
+                        primary_nameserver='sns-pb.isc.org',
+                        secondary_nameserver='ns-mlab.greenhost.net',
                         domain='measurement-lab.org',
                         serial='auto',
                         zonefile=None,
