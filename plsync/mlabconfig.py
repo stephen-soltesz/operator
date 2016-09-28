@@ -279,7 +279,8 @@ def main():
         export_mlab_site_stats(sys.stdout, sites)
     elif options.format == 'zone':
         with open(options.zoneheader, 'r') as header:
-            options.serial = serial_rfc1912(time.gmtime())
+            if options.serial == 'auto':
+                options.serial = serial_rfc1912(time.gmtime())
             export_mlab_zone_header(sys.stdout, header, options)
             sys.stdout.write("\n\n")
             export_mlab_zone_records(sys.stdout, sites, experiments)
