@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import json
+import logging
 import optparse
 import os
 import re
@@ -71,7 +72,15 @@ def parse_flags():
         '', '--zoneheader', metavar='zoneheader.in', dest='zoneheader',
         default=ZONE_HEADER_TEMPLATE,
         help='The full path to zone header file.')
-    return parser.parse_args()
+
+    (options, args) = parse_flags()
+
+    # Check given parameters.
+    if options.format == 'zone' and not os.path.exists(options.zoneheader):
+        logging.error('Zone header file %s not found!', options.zoneheader)
+        sys.exit(1)
+
+    return (options, args)
 
 
 def comment(output, note):
@@ -275,7 +284,7 @@ def main():
             sys.stdout.write("\n\n")
             export_mlab_zone_records(sys.stdout, sites, experiments)
     else:
-        print 'Sorry, unknown format: %s' % options.format
+        logging.error('Sorry, unknown format: %s', options.format)
         sys.exit(1)
 
 
