@@ -164,7 +164,7 @@ def export_experiment_records_v4(output, sites, experiment, decoration=''):
     for site in sites:
         # TODO: change site['nodes'] to a pre-sorted list type.
         for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
-            # TODO: should sitenames exclude mlab4's?
+            # TODO: remove sitenames (or exclude mlab4's).
             write_a_record(output, experiment.sitename(node, decoration),
                            experiment.ipv4(node))
             write_a_record(output, experiment.recordname(node, decoration),
@@ -177,7 +177,7 @@ def export_experiment_records_v6(output, sites, experiment, decoration=''):
     for site in sites:
         # TODO: change site['nodes'] to a pre-sorted list type.
         for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
-            # TODO: should sitenames exclude mlab4's?
+            # TODO: remove sitenames (or exclude mlab4's).
             if (node.ipv6_is_enabled() and experiment.ipv6(node)):
                 write_aaaa_record(output, experiment.sitename(node, decoration),
                                   experiment.ipv6(node))
