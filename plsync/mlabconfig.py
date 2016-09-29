@@ -5,6 +5,7 @@ import logging
 import optparse
 import os
 import re
+import string
 import StringIO
 import sys
 import time
@@ -16,6 +17,24 @@ ZONE_RETRY = 60 * 10
 ZONE_EXPIRE = 7 * 60 * 60 * 24
 ZONE_HEADER_TEMPLATE = 'mlabzone.header.in'
 ZONE_SERIAL_COUNTER = '/tmp/mlabconfig.serial'
+
+
+class BracketTemplate(string.Template):
+    """Process templates using variable delimiters like: {{var}}.
+
+    BracketTemplate is useful for formatting text when the template contains
+    many natural "$", such as shell scripts or ipxe scripts. The default
+    Template delimiter "$", make these sources difficult to work with otherwise.
+    """
+
+    delimiter = '{{'
+    pattern = r'''
+        \{\{(?:
+        (?P<escaped>\{\{)|
+        (?P<named>[_a-z][_a-z0-9]*)\}\}|
+        (?P<braced>[_a-z][_a-z0-9]*)\}\}|
+        (?P<invalid>)
+        )'''
 
 
 def usage():
@@ -30,6 +49,10 @@ EXAMPLES:
 
     mlabconfig.py --format=sitestats
       (e.g. mlab-site-stats.json)
+
+    mlabconfig.py --format=server-network-config  --template=file.template \
+      --filename="$PATH/file-{{hostname}}.xyz"
+      (e.g. stage1-$HOSTNAME.ipxe)
 
     mlabconfig.py --format=zone
       (e.g. gen_zones.py)
@@ -90,6 +113,13 @@ def parse_flags():
                       dest='zoneheader',
                       default=ZONE_HEADER_TEMPLATE,
                       help='The full path to zone header file.')
+    parser.add_option(
+        '', '--template', dest='template', default=None,
+        help='Template to apply values. Creates a new file for every hostname.')
+    parser.add_option(
+        '', '--filename', dest='filename', default=None,
+        help=('Filename interpreted as a template where interpreted template '
+              'files are written.'))
 
     (options, args) = parser.parse_args()
 
@@ -315,12 +345,30 @@ def export_mlab_host_ips(output, sites, experiments):
         # TODO(soltesz): change 'network_list' to a sorted list of node objects.
         for _, node in experiment['network_list']:
             if experiment['index'] is None:
-                # Ignore experiments without an IP address.
-                continue
+            continue
             output.write(
                 '{name},{ipv4},{ipv6}\n'.format(name=experiment.hostname(node),
                                                 ipv4=experiment.ipv4(node),
                                                 ipv6=experiment.ipv6(node)))
+
+
+def export_mlab_server_network_config(output, sites, name_tmpl, input_tmpl):
+    """Evaluates an input template using variables from every node.
+
+    A new file is created based on name_tmpl every time the input_tmpl is
+    evaluated.
+    """
+    tmpl = BracketTemplate(input_tmpl.read())
+    name = BracketTemplate(name_tmpl)
+    for site in sites:
+        for hostname, node in site['nodes'].iteritems():
+            # TODO(soltesz): support multiple (or all) object types.
+            i = node.interface()
+            i['hostname'] = hostname
+            filename = name.safe_substitute(i)
+            with open(filename, 'w') as outfile:
+                output.write("%s\n" % filename)
+                outfile.write(tmpl.safe_substitute(i))
 
 
 def main():
@@ -341,6 +389,10 @@ def main():
         export_mlab_host_ips(sys.stdout, sites, experiments)
     elif options.format == 'sitestats':
         export_mlab_site_stats(sys.stdout, sites)
+    elif options.format == 'server-network-config':
+        with open(options.template) as template:
+            export_mlab_server_network_config(
+                sys.stdout, sites, options.filename, template)
     elif options.format == 'zone':
         with open(options.zoneheader, 'r') as header:
             if options.serial == 'auto':
