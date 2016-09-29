@@ -15,6 +15,7 @@ ZONE_REFRESH = 60 * 60
 ZONE_RETRY = 60 * 10
 ZONE_EXPIRE = 7 * 60 * 60 * 24
 ZONE_HEADER_TEMPLATE = 'mlabzone.header.in'
+ZONE_SERIAL_COUNTER = '/tmp/mlabconfig.serial'
 
 
 def usage():
@@ -191,32 +192,43 @@ def export_mlab_zone_records(output, sites, experiments):
     export_experiment_records(output, sites, experiments)
 
 
-def get_revision(revision_path):
+def get_revision(prefix, revision_path):
     """Returns a two digit revision number as a string.
 
-    Everytime the same revision_path is provided, the previous revision number
-    is incremented by one and returned. However, the revision number does not
-    increase beyond "99".
+    The same revision_path should be provided for each call. If the prefix
+    matches the previous prefix, then revision number is incremented by one and
+    returned, otherwise, the revision is zero ("00"). However, the revision
+    number never increases beyond "99".
 
     Args:
+        prefix: str, current date prefix as YYYYMMDD.
         revision_path: str, the full path to a temporary file to read previous
             and store latest revision number.
 
     Returns:
         str, a two digit revision number, e.g. "00", "01", etc, up to "99".
     """
-    n = 0
+    n = {'prefix': prefix, 'revision': 0}
     if os.path.exists(revision_path):
         with open(revision_path) as f:
-            n = int(f.read())
-            if n < 99:
-                n += 1
-            else:
-                logging.error('Revision is too large to increase!')
+            try:
+                n = json.loads(f.read())
+                if n['prefix'] == prefix:
+                    # Increment previous revision, since prefix is the same.
+                    if n['revision'] < 99:
+                        n['revision'] += 1
+                    else:
+                        logging.error('Revision is too large to increase!')
+                else:
+                    # Reset prefix and revision.
+                    n['prefix'] = prefix
+                    n['revision'] = 0
+            except ValueError:
+                logging.error('Content of %s is corrupted', revision_path)
 
-    revision = '%02d' % n
+    revision = '%02d' % n['revision']
     with open(revision_path, 'w') as f:
-        f.write(revision)
+        f.write(json.dumps(n))
 
     return revision
 
@@ -227,7 +239,7 @@ def serial_rfc1912(ts):
     # revision. However, identifying and incrementing this value is a manual,
     # error prone step. Instead, we save a temporary daily sequence counter.
     serial_prefix = time.strftime('%Y%m%d', ts)
-    return serial_prefix + get_revision(os.path.join('/tmp', serial_prefix))
+    return serial_prefix + get_revision(serial_prefix, ZONE_SERIAL_COUNTER)
 
 
 def export_mlab_zone_header(output, header, options):

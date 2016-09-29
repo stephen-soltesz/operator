@@ -146,9 +146,9 @@ class MlabconfigTest(unittest.TestCase):
 
     @mock.patch.object(os.path, 'exists')
     @mock.patch('__builtin__.open')
-    def test_get_revision(self, mopen, mock_exists):
-        ts = 1446252300
-        prefix = time.strftime('%Y%m%d', time.gmtime(ts))
+    def test_get_revision_when_saved_prefix_is_old_and_revision_is_reset(
+        self, mopen, mock_exists):
+        prefix = '20151031'
         # All open and disk I/O is mocked out.
         # Pretend the file exists already.
         mock_exists.return_value = True
@@ -156,14 +156,63 @@ class MlabconfigTest(unittest.TestCase):
         mock_writer = mock.mock_open()
         # Open is called twice, once to read, and then to write.
         mopen.side_effect = [
-            mock.mock_open(read_data='01').return_value,
+            mock.mock_open(
+                # Saved prefix is older than current prefix.
+                read_data='{"prefix": "20140931", "revision": 1}').return_value,
             mock_writer.return_value
         ]
 
-        s = mlabconfig.get_revision('/tmp/' + prefix)
+        s = mlabconfig.get_revision(prefix, '/tmp/fakepath')
+
+        self.assertEqual(s, '00')
+        mock_writer.return_value.write.assert_called_once_with(
+            '{"prefix": "20151031", "revision": 0}')
+
+    @mock.patch.object(os.path, 'exists')
+    @mock.patch('__builtin__.open')
+    def test_get_revision_when_file_exists_increments_revision(
+        self, mopen, mock_exists):
+        prefix = '20151031'
+        # All open and disk I/O is mocked out.
+        # Pretend the file exists already.
+        mock_exists.return_value = True
+        # Hold the fake writer so we can check how it was called.
+        mock_writer = mock.mock_open()
+        # Open is called twice, once to read, and then to write.
+        mopen.side_effect = [
+            mock.mock_open(
+                read_data='{"prefix": "20151031", "revision": 1}').return_value,
+            mock_writer.return_value
+        ]
+
+        s = mlabconfig.get_revision(prefix, '/tmp/fakepath')
 
         self.assertEqual(s, '02')
-        mock_writer.return_value.write.assert_called_once_with('02')
+        mock_writer.return_value.write.assert_called_once_with(
+            '{"prefix": "20151031", "revision": 2}')
+
+    @mock.patch.object(os.path, 'exists')
+    @mock.patch('__builtin__.open')
+    def test_get_revision_when_file_is_corrupt_default_values_saved(
+        self, mopen, mock_exists):
+        prefix = '20151031'
+        # All open and disk I/O is mocked out.
+        # Pretend the file exists already.
+        mock_exists.return_value = True
+        # Hold the fake writer so we can check how it was called.
+        mock_writer = mock.mock_open()
+        # Open is called twice, once to read, and then to write.
+        mopen.side_effect = [
+            mock.mock_open(
+                read_data='THIS IS NOT JSON').return_value,
+            mock_writer.return_value
+        ]
+
+        s = mlabconfig.get_revision(prefix, '/tmp/fakepath')
+
+        self.assertEqual(s, '00')
+        mock_writer.return_value.write.assert_called_once_with(
+            '{"prefix": "20151031", "revision": 0}')
 
     def test_export_mlab_zone_header(self):
         options = optparse.Values()
