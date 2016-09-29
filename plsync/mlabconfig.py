@@ -107,82 +107,82 @@ def format_aaaa_record(hostname, ipv6):
 
 
 def export_router_and_switch_records(output, sites):
-  comment(output, 'router and switch v4 records.')
-  for i, site in enumerate(sites):
-      write_a_record(output, 'r1.' + site['name'], site.ipv4(index=1))
-      write_a_record(output, 's1.' + site['name'], site.ipv4(index=2))
+    comment(output, 'router and switch v4 records.')
+    for i, site in enumerate(sites):
+        write_a_record(output, 'r1.' + site['name'], site.ipv4(index=1))
+        write_a_record(output, 's1.' + site['name'], site.ipv4(index=2))
 
 
 def export_pcu_records(output, sites):
-  comment(output, 'pcus v4')
-  for site in sites:
-      # TODO: change site['nodes'] to a pre-sorted list type.
-      for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
-          write_a_record(output, node['pcu'].recordname(), node['pcu'].ipv4())
+    comment(output, 'pcus v4')
+    for site in sites:
+        # TODO: change site['nodes'] to a pre-sorted list type.
+        for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
+            write_a_record(output, node['pcu'].recordname(), node['pcu'].ipv4())
 
 
 def export_server_records(output, sites):
-  export_server_records_v4(output, sites)
-  export_server_records_v4(output, sites, decoration='v4')
-  export_server_records_v6(output, sites)
-  export_server_records_v6(output, sites, decoration='v6')
+    export_server_records_v4(output, sites)
+    export_server_records_v4(output, sites, decoration='v4')
+    export_server_records_v6(output, sites)
+    export_server_records_v6(output, sites, decoration='v6')
 
 
 def export_server_records_v4(output, sites, decoration=''):
-  comment(output, 'hosts v4%s' % (' decorated' if decoration else ''))
-  for site in sites:
-      # TODO: change site['nodes'] to a pre-sorted list type.
-      for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
-          write_a_record(output, node.recordname(decoration), node.ipv4())
+    comment(output, 'hosts v4%s' % (' decorated' if decoration else ''))
+    for site in sites:
+        # TODO: change site['nodes'] to a pre-sorted list type.
+        for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
+            write_a_record(output, node.recordname(decoration), node.ipv4())
 
 
 def export_server_records_v6(output, sites, decoration=''):
-  comment(output, 'hosts v6%s' % (' decorated' if decoration else ''))
-  for site in sites:
-      # TODO: change site['nodes'] to a pre-sorted list type.
-      for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
-          if node.ipv6_is_enabled():
-              write_aaaa_record(
-                  output, node.recordname(decoration), node.ipv6())
+    comment(output, 'hosts v6%s' % (' decorated' if decoration else ''))
+    for site in sites:
+        # TODO: change site['nodes'] to a pre-sorted list type.
+        for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
+            if node.ipv6_is_enabled():
+                write_aaaa_record(
+                    output, node.recordname(decoration), node.ipv6())
 
 
 def export_experiment_records(output, sites, experiments):
-  for experiment in experiments:
-    if experiment['index'] is None:
-      # Ignore experiments without an IP address.
-      continue
-    export_experiment_records_v4(output, sites, experiment)
-    export_experiment_records_v4(output, sites, experiment, decoration='v4')
+    for experiment in experiments:
+        if experiment['index'] is None:
+            # Ignore experiments without an IP address.
+            continue
+        export_experiment_records_v4(output, sites, experiment)
+        export_experiment_records_v4(output, sites, experiment, decoration='v4')
 
-    export_experiment_records_v6(output, sites, experiment)
-    export_experiment_records_v6(output, sites, experiment, decoration='v6')
+        export_experiment_records_v6(output, sites, experiment)
+        export_experiment_records_v6(output, sites, experiment, decoration='v6')
 
 
 def export_experiment_records_v4(output, sites, experiment, decoration=''):
-  comment(output, '%s v4%s' % (experiment.dnsname(), (
-      ' decorated' if decoration else '')))
-  for site in sites:
-    # TODO: change site['nodes'] to a pre-sorted list type.
-    for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
-        # TODO: should sitenames exclude mlab4's?
-        write_a_record(output, experiment.sitename(node, decoration),
-                       experiment.ipv4(node))
-        write_a_record(output, experiment.recordname(node, decoration),
-                       experiment.ipv4(node))
+    comment(output, '%s v4%s' % (experiment.dnsname(), (
+        ' decorated' if decoration else '')))
+    for site in sites:
+        # TODO: change site['nodes'] to a pre-sorted list type.
+        for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
+            # TODO: should sitenames exclude mlab4's?
+            write_a_record(output, experiment.sitename(node, decoration),
+                           experiment.ipv4(node))
+            write_a_record(output, experiment.recordname(node, decoration),
+                           experiment.ipv4(node))
 
 
 def export_experiment_records_v6(output, sites, experiment, decoration=''):
-  comment(output, '%s v6%s' % (experiment.dnsname(), (
-      ' decorated' if decoration else '')))
-  for site in sites:
-    # TODO: change site['nodes'] to a pre-sorted list type.
-    for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
-      # TODO: should sitenames exclude mlab4's?
-      if (node.ipv6_is_enabled() and experiment.ipv6(node)):
-        write_aaaa_record(output, experiment.sitename(node, decoration),
-                          experiment.ipv6(node))
-        write_aaaa_record(output, experiment.recordname(node, decoration),
-                          experiment.ipv6(node))
+    comment(output, '%s v6%s' % (experiment.dnsname(), (
+        ' decorated' if decoration else '')))
+    for site in sites:
+        # TODO: change site['nodes'] to a pre-sorted list type.
+        for node in sorted(site['nodes'].values(), key=lambda n: n.hostname()):
+            # TODO: should sitenames exclude mlab4's?
+            if (node.ipv6_is_enabled() and experiment.ipv6(node)):
+                write_aaaa_record(output, experiment.sitename(node, decoration),
+                                  experiment.ipv6(node))
+                write_aaaa_record(output, experiment.recordname(
+                    node,decoration), experiment.ipv6(node))
 
 
 def export_mlab_zone_records(output, sites, experiments):
