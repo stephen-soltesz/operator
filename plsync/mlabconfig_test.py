@@ -11,6 +11,36 @@ import time
 import unittest
 
 
+class BracketTemplateTest(unittest.TestCase):
+
+    def setUp(self):
+        self.vars = {'var1': 'Spot', 'var2': 'Dog'}
+
+    def test_substitute_when_template_is_correct(self):
+        tmpl = mlabconfig.BracketTemplate('{{var1}} is a {{var2}}')
+
+        actual = tmpl.safe_substitute(self.vars)
+
+        self.assertEqual(actual, 'Spot is a Dog')
+
+    def test_substitute_when_template_is_broken(self):
+        tmpl = mlabconfig.BracketTemplate('var1}} is a {{var2')
+
+        actual = tmpl.safe_substitute(self.vars)
+
+        self.assertEqual(actual, 'var1}} is a {{var2')
+
+    def test_substitute_when_template_is_shell(self):
+        tmpl1 = mlabconfig.BracketTemplate('$var1 == {{var1}}')
+        tmpl2 = mlabconfig.BracketTemplate('${var2} == {{var2}}')
+
+        actual1 = tmpl1.safe_substitute(self.vars)
+        actual2 = tmpl2.safe_substitute(self.vars)
+
+        self.assertEqual(actual1, '$var1 == Spot')
+        self.assertEqual(actual2, '${var2} == Dog')
+
+
 class MlabconfigTest(unittest.TestCase):
 
     def setUp(self):
@@ -233,6 +263,9 @@ class MlabconfigTest(unittest.TestCase):
         mlabconfig.export_mlab_zone_header(output, header, options)
 
         self.assertEqual(output.getvalue(), 'before; middle; after')
+
+    def test_export_mlab_server_network_config(self):
+        pass
 
 
 if __name__ == '__main__':

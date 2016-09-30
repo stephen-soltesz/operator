@@ -22,9 +22,12 @@ ZONE_SERIAL_COUNTER = '/tmp/mlabconfig.serial'
 class BracketTemplate(string.Template):
     """Process templates using variable delimiters like: {{var}}.
 
-    BracketTemplate is useful for formatting text when the template contains
-    many natural "$", such as shell scripts or ipxe scripts. The default
-    Template delimiter "$", make these sources difficult to work with otherwise.
+    The default string.Template delimiter is "$". This makes it difficult to
+    make templates from shell scripts or ipxe scripts (which contain many
+    natural "$" characters).
+
+    BracketTemplate uses a beginning ("{{") and ending delimiter ("}}"), that
+    does not conflict with the syntax of these languages.
     """
 
     delimiter = '{{'
@@ -50,12 +53,14 @@ EXAMPLES:
     mlabconfig.py --format=sitestats
       (e.g. mlab-site-stats.json)
 
-    mlabconfig.py --format=server-network-config  --template=file.template \
-      --filename="$PATH/file-{{hostname}}.xyz"
-      (e.g. stage1-$HOSTNAME.ipxe)
-
     mlabconfig.py --format=zone
       (e.g. gen_zones.py)
+
+    mlabconfig.py --format=server-network-config  \
+        --template_input=file.template \
+        --template_output="$PATH/file-{{hostname}}.xyz" \
+        --select=".*iad1t.*"
+      (e.g. stage1-$HOSTNAME.ipxe)
 """
 
 
@@ -114,12 +119,16 @@ def parse_flags():
                       default=ZONE_HEADER_TEMPLATE,
                       help='The full path to zone header file.')
     parser.add_option(
-        '', '--template', dest='template', default=None,
+        '', '--template_input', dest='template', default=None,
         help='Template to apply values. Creates a new file for every hostname.')
     parser.add_option(
-        '', '--filename', dest='filename', default=None,
+        '', '--template_output', dest='filename', default=None,
         help=('Filename interpreted as a template where interpreted template '
               'files are written.'))
+    parser.add_option(
+        '', '--select', dest='select', default=None,
+        help=('A regular expression used to select a subset of hostnames. If '
+              'not specified, all machine names are selected.'))
 
     (options, args) = parser.parse_args()
 
@@ -352,23 +361,39 @@ def export_mlab_host_ips(output, sites, experiments):
                                                 ipv6=experiment.ipv6(node)))
 
 
-def export_mlab_server_network_config(output, sites, name_tmpl, input_tmpl):
-    """Evaluates an input template using variables from every node.
+# TODO(soltesz): this function is too specific to node network configuration.
+# Replace this function with a more general interface for accessing
+# configuration information for a site, node, slice, or otherwise.
+def export_mlab_server_network_config(
+    output, sites, name_tmpl, input_tmpl, select_regex):
+    """Evaluates an input template using variables from every node's interface.
+
+    NOTE: Only fields from the model.Node.interface() object are supported.
 
     A new file is created based on name_tmpl every time the input_tmpl is
-    evaluated.
+    evaluated. If select_regex is not None, then only node hostnames that match
+    the regular expression are processed.
+
+    Args:
+        output: open file for writing, progress messages are written here.
+        sites: list of model.Site, where all sites are processed.
+        name_tmpl: str, the name of an output file as a template.
+        input_tmpl: str, the name of a file whose contents are a template.
+        select_regex: str, a regular expression used to select node hostnames.
     """
     tmpl = BracketTemplate(input_tmpl.read())
-    name = BracketTemplate(name_tmpl)
+    output_name = BracketTemplate(name_tmpl)
     for site in sites:
         for hostname, node in site['nodes'].iteritems():
             # TODO(soltesz): support multiple (or all) object types.
+            if select_regex and not re.search(select_regex, hostname):
+                continue
             i = node.interface()
             i['hostname'] = hostname
-            filename = name.safe_substitute(i)
-            with open(filename, 'w') as outfile:
+            filename = output_name.safe_substitute(i)
+            with open(filename, 'w') as f:
                 output.write("%s\n" % filename)
-                outfile.write(tmpl.safe_substitute(i))
+                f.write(tmpl.safe_substitute(i))
 
 
 def main():
@@ -392,7 +417,7 @@ def main():
     elif options.format == 'server-network-config':
         with open(options.template) as template:
             export_mlab_server_network_config(
-                sys.stdout, sites, options.filename, template)
+                sys.stdout, sites, options.filename, template, options.select)
     elif options.format == 'zone':
         with open(options.zoneheader, 'r') as header:
             if options.serial == 'auto':
