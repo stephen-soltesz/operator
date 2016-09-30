@@ -354,7 +354,7 @@ def export_mlab_host_ips(output, sites, experiments):
         # TODO(soltesz): change 'network_list' to a sorted list of node objects.
         for _, node in experiment['network_list']:
             if experiment['index'] is None:
-            continue
+                continue
             output.write(
                 '{name},{ipv4},{ipv6}\n'.format(name=experiment.hostname(node),
                                                 ipv4=experiment.ipv4(node),
