@@ -375,13 +375,28 @@ def export_mlab_host_ips(output, sites, experiments):
 # configuration information for a site, node, slice, or otherwise.
 def export_mlab_server_network_config(output, sites, name_tmpl, input_tmpl,
                                       select_regex):
-    """Evaluates an input template using variables from every node's interface.
+    """Evaluates input_tmpl with values from the server network configuration.
 
-    NOTE: Only fields from the model.Node.interface() object are supported.
+    NOTE: Only fields returned by the model.Node.interface function are
+    supported.
 
-    A new file is created based on name_tmpl every time the input_tmpl is
-    evaluated. If select_regex is not None, then only node hostnames that match
-    the regular expression are processed.
+    If select_regex is not None, then only node hostnames that match the
+    regular expression are processed.
+
+    For every server, the input_tmpl is evaluated with the current server's
+    network interface. The result is written to a new filename based on
+    name_tmpl.
+
+    Example:
+        name_tmpl = "{{hostname}}.example"
+        input_tmpl = "The IP address is {{ip}}"
+
+        Will create files named like:
+            mlab1.abc01.measurement-lab.org.example
+            ...
+
+        That contain:
+            The IP address is 192.168.0.1
 
     Args:
         output: open file for writing, progress messages are written here.
@@ -393,7 +408,7 @@ def export_mlab_server_network_config(output, sites, name_tmpl, input_tmpl,
     Raises:
         IOError, could not create or write to a file.
     """
-    tmpl = BracketTemplate(input_tmpl.read())
+    template = BracketTemplate(input_tmpl.read())
     output_name = BracketTemplate(name_tmpl)
     for site in sites:
         for hostname, node in site['nodes'].iteritems():
@@ -401,11 +416,12 @@ def export_mlab_server_network_config(output, sites, name_tmpl, input_tmpl,
             if select_regex and not re.search(select_regex, hostname):
                 continue
             i = node.interface()
+            # Add 'hostname' so that it is available to templates.
             i['hostname'] = hostname
             filename = output_name.safe_substitute(i)
             with open(filename, 'w') as f:
                 output.write("%s\n" % filename)
-                f.write(tmpl.safe_substitute(i))
+                f.write(template.safe_substitute(i))
 
 
 def main():
