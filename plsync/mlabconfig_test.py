@@ -1,6 +1,8 @@
 """Tests for mlabconfig."""
 
+import contextlib
 import json
+import logging
 import mlabconfig
 import mock
 import optparse
@@ -9,6 +11,33 @@ from planetlab import model
 import StringIO
 import time
 import unittest
+
+
+@contextlib.contextmanager
+def OpenStringIO(sio):
+    """Creates a StringIO object that is context aware.
+
+    OpenStringIO is useful for testing functions that opens a file and writes to
+    it.
+
+    Example:
+        @mock.patch('__builtin__.open')
+        def test_some_function(self, mock_open):
+            output = StringIO.StringIO()
+            mock_open.return_value = OpenStringIO(output)
+
+            some_function()
+
+            self.assertEqual(output.getvalue(), 'Expected content')
+
+    Args:
+        sio: StringIO.StringIO, the instance returned returned by 'open'.
+    """
+    try:
+        yield sio
+    finally:
+        # Do not close the StringIO object, so testers can access getvalue().
+        pass
 
 
 class BracketTemplateTest(unittest.TestCase):
@@ -55,6 +84,8 @@ class MlabconfigTest(unittest.TestCase):
                                      self.users,
                                      nodegroup='MeasurementLabCentos')]
         self.attrs = [model.Attr('MeasurementLabCentos', disk_max='60000000')]
+        # Turn off logging output during testing (unless critical).
+        logging.disable(logging.CRITICAL)
 
     def assertContainsItems(self, results, expected_items):
         """Asserts that every element of expected is present in results."""
@@ -264,8 +295,18 @@ class MlabconfigTest(unittest.TestCase):
 
         self.assertEqual(output.getvalue(), 'before; middle; after')
 
-    def test_export_mlab_server_network_config(self):
-        pass
+    @mock.patch('__builtin__.open')
+    def test_export_mlab_server_network_config(self, mock_open):
+        stdout = StringIO.StringIO()
+        name_tmpl = '{{hostname}}-foo.ipxe'
+        input_tmpl = StringIO.StringIO('ip={{ip}} ; echo ${ip}')
+        file_output = StringIO.StringIO()
+        mock_open.return_value = OpenStringIO(file_output)
+
+        mlabconfig.export_mlab_server_network_config(
+            stdout, self.sites, name_tmpl, input_tmpl, 'mlab1.abc01')
+
+        self.assertEqual(file_output.getvalue(), 'ip=192.168.1.9 ; echo ${ip}')
 
 
 if __name__ == '__main__':

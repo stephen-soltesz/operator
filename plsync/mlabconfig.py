@@ -119,14 +119,23 @@ def parse_flags():
                       default=ZONE_HEADER_TEMPLATE,
                       help='The full path to zone header file.')
     parser.add_option(
-        '', '--template_input', dest='template', default=None,
+        '',
+        '--template_input',
+        dest='template',
+        default=None,
         help='Template to apply values. Creates a new file for every hostname.')
     parser.add_option(
-        '', '--template_output', dest='filename', default=None,
+        '',
+        '--template_output',
+        dest='filename',
+        default=None,
         help=('Filename interpreted as a template where interpreted template '
               'files are written.'))
     parser.add_option(
-        '', '--select', dest='select', default=None,
+        '',
+        '--select',
+        dest='select',
+        default=None,
         help=('A regular expression used to select a subset of hostnames. If '
               'not specified, all machine names are selected.'))
 
@@ -364,8 +373,8 @@ def export_mlab_host_ips(output, sites, experiments):
 # TODO(soltesz): this function is too specific to node network configuration.
 # Replace this function with a more general interface for accessing
 # configuration information for a site, node, slice, or otherwise.
-def export_mlab_server_network_config(
-    output, sites, name_tmpl, input_tmpl, select_regex):
+def export_mlab_server_network_config(output, sites, name_tmpl, input_tmpl,
+                                      select_regex):
     """Evaluates an input template using variables from every node's interface.
 
     NOTE: Only fields from the model.Node.interface() object are supported.
@@ -380,6 +389,9 @@ def export_mlab_server_network_config(
         name_tmpl: str, the name of an output file as a template.
         input_tmpl: str, the name of a file whose contents are a template.
         select_regex: str, a regular expression used to select node hostnames.
+
+    Raises:
+        IOError, could not create or write to a file.
     """
     tmpl = BracketTemplate(input_tmpl.read())
     output_name = BracketTemplate(name_tmpl)
