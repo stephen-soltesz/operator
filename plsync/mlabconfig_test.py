@@ -17,8 +17,7 @@ import unittest
 def OpenStringIO(sio):
     """Creates a StringIO object that is context aware.
 
-    OpenStringIO is useful for testing functions that opens a file and writes to
-    it.
+    OpenStringIO is useful for testing functions that open and write to a file.
 
     Example:
         @mock.patch('__builtin__.open')
@@ -84,8 +83,8 @@ class MlabconfigTest(unittest.TestCase):
                                      self.users,
                                      nodegroup='MeasurementLabCentos')]
         self.attrs = [model.Attr('MeasurementLabCentos', disk_max='60000000')]
-        # Turn off logging output during testing (unless critical).
-        logging.disable(logging.CRITICAL)
+        # Turn off logging output during testing (unless CRITICAL).
+        logging.disable(logging.ERROR)
 
     def assertContainsItems(self, results, expected_items):
         """Asserts that every element of expected is present in results."""

@@ -402,7 +402,7 @@ def export_mlab_server_network_config(output, sites, name_tmpl, input_tmpl,
         output: open file for writing, progress messages are written here.
         sites: list of model.Site, where all sites are processed.
         name_tmpl: str, the name of an output file as a template.
-        input_tmpl: str, the name of a file whose contents are a template.
+        input_tmpl: open file for reading, contains the template content.
         select_regex: str, a regular expression used to select node hostnames.
 
     Raises:
