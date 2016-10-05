@@ -31,7 +31,7 @@ def OpenStringIO(sio):
             self.assertEqual(output.getvalue(), 'Expected content')
 
     Args:
-        sio: StringIO.StringIO, the instance returned returned by 'open'.
+        sio: StringIO.StringIO, the instance returned by 'open'.
     """
     try:
         yield sio
