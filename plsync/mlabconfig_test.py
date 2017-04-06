@@ -443,7 +443,8 @@ class MlabconfigTest(unittest.TestCase):
             u'targets': [
                 u'bar.abc.mlab2.abc01.measurement-lab.org:9090',
                 u'bar.abc.mlab1.abc01.measurement-lab.org:9090',
-                u'bar.abc.mlab3.abc01.measurement-lab.org:9090']
+                u'bar.abc.mlab3.abc01.measurement-lab.org:9090'
+            ]
         }
 
         mlabconfig.export_legacy(output, experiments, None)
