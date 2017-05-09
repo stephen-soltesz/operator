@@ -74,8 +74,8 @@ EXAMPLES:
 
     mlabconfig.py --format=prom-targets \
         --template_target={{hostname}}:7999 \
-        --label=module=rsyncd_online \
-        --label=service=rsyncd \
+        --label module=rsyncd_online \
+        --label service=rsyncd \
         --select=".*lga0t.*"
 
     mlabconfig.py --format=prom-targets-nodes \
