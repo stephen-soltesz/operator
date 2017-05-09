@@ -189,6 +189,28 @@ def parse_flags():
         logging.error('Zone header file %s not found!', options.zoneheader)
         sys.exit(1)
 
+    # If labels are given, parse them and check for malformed values.
+    if options.labels:
+        new_labels = {}
+        for label in options.labels:
+            fields = label.split('=')
+            if len(fields) != 2:
+                logging.error(
+                    'Invalid "--label %s"; use "--label key=value" format.',
+                    label)
+                sys.exit(1)
+            # Save the key/value.
+            new_labels[fields[0]] = fields[1]
+        # Update the value of options.labels (and change the type to a dict).
+        options.labels = new_labels
+
+    # If we're generating prometheus service discovery files, require labels.
+    if options.format in ['prom-targets', 'prom-targets-nodes']:
+        if not options.labels:
+            logging.error(
+                'Provide at least one --label for "%s" format', options.format)
+            sys.exit(1)
+
     return (options, args)
 
 
@@ -608,18 +630,12 @@ def targets_as_json(labels, targets):
     The service discovery targets are labeled with given labels.
 
     Args:
-      labels: list of str, each element should be in the form: "key=value".
+      labels: dict of str, a set of key/values used as target labels.
       targets: list of str, the targets to scrape.
 
     Returns:
       str, the service discovery document as JSON.
     """
-    labels = dict(filter(lambda x: len(x) == 2, [l.split('=') for l in labels]))
-    if not labels:
-        # If there are no valid labels, signal this with a default label set.
-        labels = {
-            'service': 'missing-label',
-        }
     config = {
         "labels": labels,
         "targets": targets,

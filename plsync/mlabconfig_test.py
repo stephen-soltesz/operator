@@ -539,7 +539,7 @@ class MlabconfigTest(unittest.TestCase):
         ]""")
 
         actual_json = mlabconfig.targets_as_json(
-            ('service=sidestream', 'module=tcp_v4_online'),
+            {'service': 'sidestream', 'module': 'tcp_v4_online'},
             ('bar.abc.mlab2.abc01.measurement-lab.org:9090',))
 
         self.assertItemsEqual(
