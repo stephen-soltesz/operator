@@ -605,10 +605,10 @@ def select_prometheus_node_targets(sites, select_regex, target_template):
 def targets_as_json(labels, targets):
     """Generates a service discovery format for targets.
 
-    The service discovery targets are labeled with the service and module.
+    The service discovery targets are labeled with given labels.
 
     Args:
-      labels: dict of str, key values that are assigned as target labels.
+      labels: list of str, each element should be in the form: "key=value".
       targets: list of str, the targets to scrape.
 
     Returns:
