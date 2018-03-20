@@ -786,8 +786,8 @@ def main():
     if options.format == 'hostips':
         output = export_mlab_host_ips(sites, experiments)
         sys.stdout.write(output.getvalue())
-        # Temporary workaround for HND01 load issues. Remove this after the
-        # issue has been resolved.
+        # Temporary workaround for HND01 load issues. Remove or generalize:
+        # https://github.com/m-lab/operator/issues/154
         sys.stdout.write(
             'mlab1.tyo01.measurement-lab.org,35.200.102.226,\n'
             'ndt.iupui.mlab1.tyo01.measurement-lab.org,35.200.102.226,\n'
